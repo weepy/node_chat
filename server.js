@@ -4,24 +4,19 @@ var sys = require("sys");
 var MD5 = require("./md5");
 var Session = require("./session").Session;
 var Channel = require("./channel").Channel;
-
+// Channel.sys = sys
 //CONFIG
 var Config = {
   allowDuplicateUsernames: true,
   host: null,
   port: 8001,
   messageBacklog: 200,
-  KeepaliveTimeout: 5 * 1000,
-  SessionTimeout: 10 * 1000
+  KeepaliveTimeout: 30 * 1000,
+  SessionTimeout: 60 * 1000
   //,SecurityKey: "3244454u903-2hiout"
 }
 
 Channel.messageBackLog = Config.messageBackLog
-
-
-
-//SESSION
-// TODO move this into CommonJS modules ... not sure how to handle prototypes ?
 
 
 //INTERVALS
@@ -38,24 +33,30 @@ setInterval(function () {
 
 fu.listen(Config.port, Config.host);
 
-fu.get("/", fu.staticHandler("./client/index.html"));
-fu.get("/style.css", fu.staticHandler("./client/style.css"));
-fu.get("/client.js", fu.staticHandler("./client/client.js"));
-fu.get("/jquery-1.2.6.min.js", fu.staticHandler("./client/jquery-1.2.6.min.js"));
+fu.get("/", fu.staticHandler("./public/index.html"));
+fu.get("/multiple.html", fu.staticHandler("./public/multiple.html"));
+fu.get("/style.css", fu.staticHandler("./public/style.css"));
+fu.get("/client.js", fu.staticHandler("./public/client.js"));
+fu.get("/jquery.js", fu.staticHandler("./public/jquery.js"));
 
 
 fu.get("/who", function (req, res) {
-  var nicks = {}; // don't want to count the same name twice
+  var _id = req.uri.params["id"]
+  var channel = Session.all[_id].channel
+  var all_nicks = {}; // don't want to count the same name twice
   for (var id in Session.all) {
-    if (!Session.all.hasOwnProperty(id)) continue;
-    var session = Session.all[id];
-    nicks[session.nick] = 1
+    if (!Session.all.hasOwnProperty(id)) 
+      continue;
+    
+    var session = Session.all[id] 
+    if(session.channel == channel)
+      all_nicks[session.nick] = 1
   }
   
   var ret = []
-  for(var i in nicks) {
+  for(var i in all_nicks)
     ret.push(i)
-  }
+  
   res.simpleJSON(200, { nicks: ret });
 });
 
@@ -107,10 +108,9 @@ fu.get("/join", function (req, res) {
     return;
   }
 
-  //sys.puts("connection: " + nick + "@" + res.connection.remoteAddress);
+  if(channel.nickCounts[nick] == 1) // must have just joined?
+    channel.appendMessage(session.nick, "join");
 
-  var log = channel.appendMessage(session.nick, "join");
-  sys.puts(log)
   res.simpleJSON(200, { id: session.id, nick: session.nick});
 });
 
@@ -132,8 +132,8 @@ fu.get("/recv", function (req, res) {
   }
 
   var session = Session.all[id];
-  
-  if (session)
+
+  if (session) 
     session.poke();
   else {
     sys.puts("no session for for id: " + id  )
@@ -141,12 +141,18 @@ fu.get("/recv", function (req, res) {
   }
 
   var s = parseInt(since, 10);
-    
+  
   session.channel.query(s, function (messages) {
-    if (session) session.poke();
+    
+    if (session)
+      session.poke()
     res.simpleJSON(200, { messages: messages });
   });
 });
+
+
+
+
 
 fu.get("/send", function (req, res) {
   var id = req.uri.params.id;
@@ -162,6 +168,6 @@ fu.get("/send", function (req, res) {
     
 
   var log = session.channel.appendMessage(session.nick, "msg", text);
-  sys.puts(log)
+
   res.simpleJSON(200, {});
 });

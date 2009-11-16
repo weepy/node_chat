@@ -3,11 +3,13 @@ var Channel = function (name) {
   this.name = name
   this.messages = [];
   this.callbacks = [];
+  this.sessionCount = 0
+  this.nickCounts = {}
 };
 
 Channel.all = {}
 exports.Channel = Channel
-
+var sys = require("sys");
 
 Channel.create = function(name) {
   if(Channel.all[name]) 
@@ -64,12 +66,17 @@ Channel.prototype.appendMessage = function (nick, type, text) {
 
 Channel.prototype.query = function (since, callback) {
   var matching = [];
+  
+  sys.puts("querying channel for messages since: " + since)
   for (var i = 0; i < this.messages.length; i++) {
     var message = this.messages[i];
+    sys.puts("message with timestamp" + message.timestamp)
     if (message.timestamp > since)
       matching.push(message)
   }
 
+  sys.puts("found " + matching.length)
+  
   if (matching.length != 0) {
     callback(matching);
   } else {
@@ -78,17 +85,19 @@ Channel.prototype.query = function (since, callback) {
 };
 
 Channel.prototype.join = function(session) {
-  // this.sessions[session.id] = session
-  //this.nicks[session.nick] = 1
+  this.sessionCount += 1
+  this.nickCounts[session.nick] = this.nickCounts[session.nick] || 0
+  this.nickCounts[session.nick] += 1
 }
 
 Channel.prototype.unjoin = function(session) {
-  //delete this.sessions[session.id]
-  //this.nicks[session.nick] = 1
-  
+  this.sessionCount -= 1
+  this.nickCounts[session.nick] -= 1
 }
 
 
 Channel.prototype.destroy = function() {
   // save backlog to disk when there's no longer any sessions ?
+  
+  delete Channel.all[this.name]
 }

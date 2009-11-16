@@ -1,6 +1,7 @@
 body {
   padding: 0;
   margin: 0;
+  _background: red;
 }
 
 .online {
@@ -32,7 +33,7 @@ a:hover { text-decoration: underline; color: #aaa; }
 
 #loading, #connect {
   background: #22252a;
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
@@ -51,6 +52,8 @@ a:hover { text-decoration: underline; color: #aaa; }
 
 #toolbar {
   position: fixed;
+  /*_position: absolute; 
+  _top: expression(0+((e=document.documentElement.scrollTop)?e:document.body.scrollTop)+'px'); */
   color: #fff;
   width: 100%; 
   bottom: 0;
@@ -72,7 +75,7 @@ a:hover { text-decoration: underline; color: #aaa; }
   /* enough padding to clear the toolbar.. is there a better way to do this? */
   padding-bottom: 5.1em; 
   background: inherit;
-  overflow: hidden;
+  overflow: auto;
 }
 
 /* not very important info */

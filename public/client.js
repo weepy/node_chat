@@ -6,14 +6,29 @@ var CONFIG = { debug: false
 
 var nicks = [];
 
+// IE doesn't have indexOf methods for it's array - we'll use this instead.  
+Array.indexOf = function(array, obj){
+      for(var i=0; i<array.length; i++)
+        if(array[i]==obj)
+          return i;
+      return -1;
+    }
+
+
 function updateUsersLink ( ) {
   var t = nicks.length.toString() + " user";
   if (nicks.length != 1) t += "s";
-  $("#usersLink").text(t);
+  
+  t += ": "
+  for(var i in nicks) {
+    t += "<span class='nick'>" + nicks[i] + "</span>"
+  }
+  
+  $("#usersLink").html(t);
 }
 
 function userJoin(nick, timestamp) {
-  addMessage(nick, "joined", timestamp, "join");
+  addMessage( nick, "joined", timestamp, "join");
   for (var i = 0; i < nicks.length; i++)
     if (nicks[i] == nick) return;
   nicks.push(nick);
@@ -26,7 +41,6 @@ function userPart(nick, timestamp) {
   for (var i = 0; i < nicks.length; i++) {
     if (nicks[i] == nick) {
       nicks.splice(i,1)
-      break;
     }
   }
   updateUsersLink();
@@ -39,7 +53,7 @@ function updateUsersOnlineness() {
     s.push(".nick_" + nicks[i])
   }
   
-  $(".nick").removeClass("online")
+  $(".nick span").removeClass("online")
   $(s.join(",")).addClass("online")
 }
 // utility functions
@@ -107,11 +121,11 @@ function addMessage (from, text, time, _class) {
   // replace URLs with links
   text = text.replace(util.urlRE, '<a target="_blank" href="$&">$&</a>');
 
-  var online = nicks.indexOf(from) >= 0 ? "online" : ""
+  
   
   var content = '<tr>'
               + '  <td class="date">' + util.timeString(time) + '</td>'
-              + '  <td class="nick nick_' + from + ' '  +  online + '">' + util.toStaticHTML(from) + '</td>'
+              + '  <td class="nick">' + NickHTML(from) + '</td>'
               + '  <td class="msg-text">' + text  + '</td>'
               + '</tr>'
               ;
@@ -119,6 +133,11 @@ function addMessage (from, text, time, _class) {
 
   $("#log").append(messageElement);
   scrollDown();
+}
+
+function NickHTML(from) {
+  var online = Array.indexOf(nicks, from) >= 0 ? "online" : ""
+  return '<span class="nick_' + from + " "+  online + '">' + util.toStaticHTML(from) + '</span>'  
 }
 
 var transmission_errors = 0;
@@ -227,10 +246,10 @@ function outputUsers () {
 }
 
 function who () {
-  jQuery.get("/who", {}, function (data, status) {
+  jQuery.get("/who", { id: CONFIG.id }, function (data, status) {
     if (status != "success") return;
     nicks = data.nicks;
-    outputUsers();
+    //outputUsers();
   }, "json");
 }
 
@@ -282,8 +301,8 @@ $(document).ready(function() {
 
   
 
-  if(Params["user"]) {
-    tryConnectWithNick(Params["user"])
+  if(Params["nick"]) {
+    tryConnectWithNick(Params["nick"])
     
   } else {
     showConnect();

@@ -36,8 +36,16 @@ Session.prototype.poke = function () {
 }
 
 Session.prototype.destroy = function () {
-  this.channel.appendMessage(this.nick, "part");
+
   this.channel.unjoin(this)
+  
+  if(this.channel.nickCounts[this.nick] == 0)
+    this.channel.appendMessage(this.nick, "part");    
+  
+  if(this.channel.sessionCount == 0) 
+    this.channel.destroy()
+
+  
   delete Session.all[this.id]; //sessions[this.id];
 }
 
