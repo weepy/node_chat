@@ -2,6 +2,10 @@ body {
   padding: 0;
   margin: 0;
 }
+
+.online {
+  color: green;
+}
 body, #entry {
   background: #22252a;
   color: #eee;

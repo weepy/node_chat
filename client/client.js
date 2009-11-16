@@ -18,6 +18,7 @@ function userJoin(nick, timestamp) {
     if (nicks[i] == nick) return;
   nicks.push(nick);
   updateUsersLink();
+  updateUsersOnlineness()
 }
 
 function userPart(nick, timestamp) {
@@ -29,8 +30,18 @@ function userPart(nick, timestamp) {
     }
   }
   updateUsersLink();
+  updateUsersOnlineness()
 }
 
+function updateUsersOnlineness() {
+  var s = []
+  for(var i in nicks) {
+    s.push(".nick_" + nicks[i])
+  }
+  
+  $(".nick").removeClass("online")
+  $(s.join(",")).addClass("online")
+}
 // utility functions
 
 util = {
@@ -96,9 +107,11 @@ function addMessage (from, text, time, _class) {
   // replace URLs with links
   text = text.replace(util.urlRE, '<a target="_blank" href="$&">$&</a>');
 
+  var online = nicks.indexOf(from) >= 0 ? "online" : ""
+  
   var content = '<tr>'
               + '  <td class="date">' + util.timeString(time) + '</td>'
-              + '  <td class="nick">' + util.toStaticHTML(from) + '</td>'
+              + '  <td class="nick nick_' + from + ' '  +  online + '">' + util.toStaticHTML(from) + '</td>'
               + '  <td class="msg-text">' + text  + '</td>'
               + '</tr>'
               ;
@@ -141,6 +154,7 @@ function longPoll (data) {
     if (first_poll) {
       first_poll = false;
       who();
+      updateUsersOnlineness()
     }
   }
 
@@ -191,6 +205,7 @@ function showChat (nick) {
   scrollDown();
 }
 
+
 function onConnect (session) {
   if (session.error) {
     alert("error connecting: " + session.error);
@@ -202,6 +217,7 @@ function onConnect (session) {
   CONFIG.id   = session.id;
 
   showChat(CONFIG.nick);
+  longPoll();
 }
 
 function outputUsers () {
@@ -218,6 +234,17 @@ function who () {
   }, "json");
 }
 
+(function(){
+  Params = {}
+  var params = document.location.search.slice(1).split("&")
+  for(var i in params) {
+    var kv = params[i].split("=")
+    Params[kv[0]] = kv[1]
+  }
+})();
+
+Channel = Params.channel || "lobby"
+
 $(document).ready(function() {
 
   $("#entry").keypress(function (e) {
@@ -228,34 +255,12 @@ $(document).ready(function() {
   });
 
   $("#usersLink").click(outputUsers);
-
+  $("#channel").html("Channel: " + Channel)
   $("#connectButton").click(function () {
     showLoad();
     var nick = $("#nickInput").attr("value");
 
-    if (nick.length > 50) {
-      alert("Nick too long. 50 character max.");
-      showConnect();
-      return false;
-    }
-
-    if (/[^\w_\-^!]/.exec(nick)) {
-      alert("Bad character in nick. Can only have letters, numbers, and '_', '-', '^', '!'");
-      showConnect();
-      return false;
-    }
-
-    $.ajax({ cache: false
-           , type: "GET" // XXX should be POST
-           , dataType: "json"
-           , url: "/join"
-           , data: { nick: nick }
-           , error: function () {
-               alert("error connecting to server");
-               showConnect();
-             }
-           , success: onConnect
-           });
+    tryConnectWithNick(nick)
     return false;
   });
 
@@ -275,10 +280,43 @@ $(document).ready(function() {
   // remove fixtures
   $("#log table").remove();
 
-  longPoll();
+  
 
-  showConnect();
+  if(Params["user"]) {
+    tryConnectWithNick(Params["user"])
+    
+  } else {
+    showConnect();
+  }
+  
+  
 });
+
+function tryConnectWithNick(nick) {
+  if (nick.length > 50) {
+    alert("Nick too long. 50 character max.");
+    showConnect();
+    return false;
+  }
+
+  if (/[^\w_\-^!]/.exec(nick)) {
+    alert("Bad character in nick. Can only have letters, numbers, and '_', '-', '^', '!'");
+    showConnect();
+    return false;
+  }
+
+  $.ajax({ cache: false
+         , type: "GET" // XXX should be POST
+         , dataType: "json"
+         , url: "/join"
+         , data: { nick: nick, channel: Channel }
+         , error: function () {
+             alert("error connecting to server");
+             showConnect();
+           }
+         , success: onConnect
+         });
+}
 
 $(window).unload(function () {
   jQuery.get("/part", {id: CONFIG.id}, function (data) { }, "json");
